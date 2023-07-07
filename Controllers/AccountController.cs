@@ -1,6 +1,7 @@
 ﻿using IdentityManager.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Threading.Tasks;
 
@@ -61,11 +62,15 @@ namespace IdentityManager.Controllers
             returnUrl = returnUrl ?? Url.Content("~/");
             if (ModelState.IsValid)
             {
-                var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe,lockoutOnFailure:false);
+                var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe,lockoutOnFailure:true);
+                if (result.IsLockedOut)
+                {
+                    return View("Lockout");
+                }
                 if (result.Succeeded)
                 {
                     return LocalRedirect(returnUrl);
-                }
+                }               
                 else
                 {
                     ModelState.AddModelError(string.Empty, "Invalid login attempt.");
