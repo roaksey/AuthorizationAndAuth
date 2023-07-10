@@ -11,9 +11,9 @@ namespace IdentityManager.Controllers
     {
         private readonly UserManager<IdentityUser> _userManager;
         private readonly SignInManager<IdentityUser> _signInManager;
-        public AccountController(UserManager<IdentityUser> userManager,SignInManager<IdentityUser> signInManager)
+        public AccountController(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager)
         {
-            _userManager = userManager; 
+            _userManager = userManager;
             _signInManager = signInManager;
         }
         public IActionResult Index()
@@ -22,7 +22,7 @@ namespace IdentityManager.Controllers
         }
 
         [HttpGet]
-        public IActionResult Register(string returnUrl=null)
+        public IActionResult Register(string returnUrl = null)
         {
             ViewData["ReturnUrl"] = returnUrl;
             RegisterViewModel registerViewModel = new RegisterViewModel();
@@ -39,7 +39,8 @@ namespace IdentityManager.Controllers
             {
                 var userManager = new ApplicationUser() { Name = model.Name, Email = model.Email, UserName = model.Email };
                 var result = await _userManager.CreateAsync(userManager, model.Password);
-                if(result.Succeeded) { 
+                if (result.Succeeded)
+                {
                     await _signInManager.SignInAsync(userManager, isPersistent: false);
                     return LocalRedirect(returnUrl);
                 }
@@ -48,7 +49,7 @@ namespace IdentityManager.Controllers
             return View(model);
         }
         [HttpGet]
-        public IActionResult Login(string returnUrl=null)
+        public IActionResult Login(string returnUrl = null)
         {
             ViewData["ReturnUrl"] = returnUrl;
             return View();
@@ -62,7 +63,7 @@ namespace IdentityManager.Controllers
             returnUrl = returnUrl ?? Url.Content("~/");
             if (ModelState.IsValid)
             {
-                var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe,lockoutOnFailure:true);
+                var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe, lockoutOnFailure: true);
                 if (result.IsLockedOut)
                 {
                     return View("Lockout");
@@ -70,7 +71,7 @@ namespace IdentityManager.Controllers
                 if (result.Succeeded)
                 {
                     return LocalRedirect(returnUrl);
-                }               
+                }
                 else
                 {
                     ModelState.AddModelError(string.Empty, "Invalid login attempt.");
@@ -79,12 +80,27 @@ namespace IdentityManager.Controllers
             }
             return View(model);
         }
+
+        [HttpGet]
+        public IActionResult ForgotPassword()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
+        {
+
+            return View(model);
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> LogOff()
         {
             await _signInManager.SignOutAsync();
-            return RedirectToAction(nameof(HomeController.Index), "Home");   
+            return RedirectToAction(nameof(HomeController.Index), "Home");
         }
 
         private void AddErrors(IdentityResult result)
@@ -96,3 +112,5 @@ namespace IdentityManager.Controllers
         }
     }
 }
+
+   
