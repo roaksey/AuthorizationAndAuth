@@ -41,16 +41,21 @@ namespace IdentityManager.Controllers
             returnUrl = returnUrl ?? Url.Content("~/");
             if (ModelState.IsValid)
             {
-                var userManager = new ApplicationUser() { Name = model.Name, Email = model.Email, UserName = model.Email };
-                var result = await _userManager.CreateAsync(userManager, model.Password);
+                var user = new ApplicationUser { UserName = model.Email, Email = model.Email, Name = model.Name };
+                var result = await _userManager.CreateAsync(user, model.Password);
                 if (result.Succeeded)
                 {
-                    await _signInManager.SignInAsync(userManager, isPersistent: false);
+                    var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                    var callbackurl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code }, protocol: HttpContext.Request.Scheme);
+
+                    await _emailSender.SendEmailAsync(model.Email, "Confirm your account - Identity Manager",
+                        "Please confirm your account by clicking here: <a href=\"" + callbackurl + "\">link</a>");
+                    await _signInManager.SignInAsync(user, isPersistent: false);
                     return LocalRedirect(returnUrl);
                 }
                 AddErrors(result);
             }
-            return View(model);
+            return View(model); 
         }
         [HttpGet]
         public IActionResult Login(string returnUrl = null)
@@ -163,6 +168,22 @@ namespace IdentityManager.Controllers
             return View();
         }
 
+        [HttpGet]
+        public async Task<IActionResult> ConfirmEmail(string userId, string code)
+        {
+            if (userId == null || code == null)
+            {
+                return View("Error");
+            }
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                return View("Error");
+            }
+            var result = await _userManager.ConfirmEmailAsync(user, code);
+            return View(result.Succeeded ? "ConfirmEmail" : "Error");
+
+        }
         private void AddErrors(IdentityResult result)
         {
             foreach (var error in result.Errors)
