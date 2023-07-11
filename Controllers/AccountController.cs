@@ -1,5 +1,6 @@
 ﻿using IdentityManager.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -11,10 +12,13 @@ namespace IdentityManager.Controllers
     {
         private readonly UserManager<IdentityUser> _userManager;
         private readonly SignInManager<IdentityUser> _signInManager;
-        public AccountController(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager)
+        private readonly IEmailSender _emailSender;
+        public AccountController(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager, IEmailSender emailSender)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _emailSender = emailSender;
+
         }
         public IActionResult Index()
         {
@@ -91,6 +95,26 @@ namespace IdentityManager.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
         {
+            if (ModelState.IsValid)
+            {
+                var user = await _userManager.FindByEmailAsync(model.Email);
+                if(user == null)
+                {
+                return RedirectToAction("ForgotPasswordConfirmation");
+                }
+                var code = _userManager.GeneratePasswordResetTokenAsync(user);
+                var callBackUrl = Url.Action("ResetPassword","Account",new 
+                {
+                    userId =  user.Id,
+                    code = code
+                },
+                 protocol:HttpContext.Request.Scheme);
+
+                await _emailSender.SendEmailAsync(model.Email, "Reset Password - Identity Manager",
+                    "Please reset your password by clicking here: <a href=\"" + callBackUrl + "\">link</a>");
+                return RedirectToAction("ForgotPasswordConfirmation");
+
+            }
 
             return View(model);
         }
@@ -102,6 +126,42 @@ namespace IdentityManager.Controllers
             await _signInManager.SignOutAsync();
             return RedirectToAction(nameof(HomeController.Index), "Home");
         }
+        [HttpGet]
+        public IActionResult ForgotPasswordConfirmation()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public IActionResult ResetPassword(string code = null) {
+            return code == null ? View("Error") : View();
+        }
+        public async Task<IActionResult> ResetPassword(ForgotPasswordViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = await _userManager.FindByEmailAsync(model.Email);
+                if (user == null)
+                {
+                    return RedirectToAction("ForgotPasswordConfirmation");
+                }
+
+                var code = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var callbackurl = Url.Action("ResetPassword", "Account", new { userId = user.Id, code = code }, protocol: HttpContext.Request.Scheme);
+
+                await _emailSender.SendEmailAsync(model.Email, "Reset Password - Identity Manager",
+                    "Please reset your password by clicking here: <a href=\"" + callbackurl + "\">link</a>");
+
+                return RedirectToAction("ForgotPasswordConfirmation");
+            }
+
+            return View(model);
+        }
+        [HttpGet]
+        public IActionResult ResetPasswordConfirmation()
+        {
+            return View();
+        }
 
         private void AddErrors(IdentityResult result)
         {
@@ -110,6 +170,8 @@ namespace IdentityManager.Controllers
                 ModelState.AddModelError(string.Empty, error.Description);
             }
         }
+
+
     }
 }
 
