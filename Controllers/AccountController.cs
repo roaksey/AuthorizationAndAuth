@@ -136,21 +136,21 @@ namespace IdentityManager.Controllers
         public IActionResult ResetPassword(string code = null) {
             return code == null ? View("Error") : View();
         }
-        public async Task<IActionResult> ResetPassword(ForgotPasswordViewModel model)
+        public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model)
         {
             if (ModelState.IsValid)
             {
                 var user = await _userManager.FindByEmailAsync(model.Email);
                 if (user == null)
                 {
-                    return RedirectToAction("ForgotPasswordConfirmation");
+                    return RedirectToAction("ResetPasswordConfirmation");
                 }
 
-                var code = await _userManager.GeneratePasswordResetTokenAsync(user);
-                var callbackurl = Url.Action("ResetPassword", "Account", new { userId = user.Id, code = code }, protocol: HttpContext.Request.Scheme);
-
-                await _emailSender.SendEmailAsync(model.Email, "Reset Password - Identity Manager",
-                    "Please reset your password by clicking here: <a href=\"" + callbackurl + "\">link</a>");
+                var result = await _userManager.ResetPasswordAsync(user,model.Code,model.Password); 
+                if(result.Succeeded) {
+                    return RedirectToAction("ResetPasswordConfirmation");
+                }
+                AddErrors(result);
 
                 return RedirectToAction("ForgotPasswordConfirmation");
             }

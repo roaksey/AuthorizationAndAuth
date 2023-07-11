@@ -37,6 +37,7 @@ namespace IdentityManager
                 opt.Password.RequireLowercase = true;
                 opt.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromSeconds(40);
                 opt.Lockout.MaxFailedAccessAttempts = 2;
+                opt.SignIn.RequireConfirmedAccount = true;
             });
             services.AddControllersWithViews();
         }
