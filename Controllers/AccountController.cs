@@ -184,6 +184,16 @@ namespace IdentityManager.Controllers
             return View(result.Succeeded ? "ConfirmEmail" : "Error");
 
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ExternalLogin(string provider, string returnUrl = null)
+        {
+            //request to redirect to the external Login provider
+            var redirectUrl = Url.Action("ExternalLoginCallback","Account",new {ReturnUrl =  returnUrl});
+            var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
+            return Challenge(properties, provider);
+        }
         private void AddErrors(IdentityResult result)
         {
             foreach (var error in result.Errors)
