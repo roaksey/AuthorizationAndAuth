@@ -226,6 +226,39 @@ namespace IdentityManager.Controllers
                 return View("ExternaLoginConfirmation", new ExternalLoginConfirmationViewModel { Email = email });
             }
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ExternalLoginConfirmation(ExternalLoginConfirmationViewModel model, string returnUrl = null)
+        {
+            returnUrl = returnUrl ?? Url.Action("~/");
+            if (ModelState.IsValid)
+            {
+                // get user info from external login provider 
+                var info = await _signInManager.GetExternalLoginInfoAsync();
+                if(info==null)
+                {
+                    return View("Error");
+                }
+                var user = new ApplicationUser { UserName = model.Email, Email = model.Email,Name = model.Name };
+                var result = await _userManager.CreateAsync(user);
+                if (result.Succeeded)
+                {
+                    result = await _userManager.AddLoginAsync(user, info);
+                    if (result.Succeeded)
+                    {
+                        await _signInManager.SignInAsync(user, isPersistent: false);
+                        await _signInManager.UpdateExternalAuthenticationTokensAsync(info);
+                        return LocalRedirect(returnUrl);
+                    }
+                    AddErrors(result);
+                }
+            
+            }
+                ViewData["ReturnUrl"] = returnUrl;
+                return View(model);
+            
+        }
         private void AddErrors(IdentityResult result)
         {
             foreach (var error in result.Errors)
